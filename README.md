@@ -46,8 +46,8 @@ of the referenced palette.)
           0040 ...............X  (scaled 1/2 x 1/2 !!)
           0080 ...............X
           00C0 ...............X  Legenda:
-          0100 ...............X  . 6-bit sprite reference with 2-bit index into next X
-          0140 ...............X  X 4*4-bit index into P
+          0100 ...............X  . 6-bit sprite reference plus 2-bit index into next border X
+          0140 ...............X  X 4*4-bit index into palette P
           0180 ...............X  P 16*4-bit indexed color palette
           01C0 ...............X  r display (and IO?) settings registers (e.g. scroll offset, actual viewport; TBD)
           0200 ...............X  S sprite register (sprite reference, size, x, y)
