@@ -1,6 +1,6 @@
-### Tricolore
+# Tricolore
 
-# Goal:
+### Goal:
 A virtual machine in the spirit of CHIP-8
 optimized to show a game of go
 
@@ -8,13 +8,13 @@ Simple to implement e.g. on:
 - M5Stack
 - LilyGo SmartWatch
 
-# So, features:
+### So, features:
 - 240x240 pixel screen
 - Addressable as 30x30 8x8 sprite blocks
 - 64 monochrome sprites, default to alphanumerical characters
 - 64 2-bit indexed sprites
 
-# Display memory:
+### Display memory:
 - 1kb (1024 bytes) of 6-bit sprite references with 2-bit palette selectors
   - Memory is arranged as if screen were 32x32, but viewport is 30x30
   - Bytes that fall outside of viewport contain registers
@@ -25,7 +25,7 @@ Simple to implement e.g. on:
   - sprite reference (incl. palette) + size (2 bytes)
   - x / y coords (2 bytes)
 
-# Palette / sprite memory:
+### Palette / sprite memory:
 - In each screen memory byte the lower 6 bits refer a sprite, but the upper
 - 2 bits index into the 2 bytes at the end of the screen line, where
 - 4 entries of 4 bits refer to any of the 16 possible palettes, where
@@ -38,30 +38,31 @@ so in theory all 16 colours may be used. (In practice however, index pattern
 of the referenced palette.)
 
 
-# (Display) memory layout:
-0000  -----
-...   1kb display mem (32 * 32 blocks)
-      0000 ...............X
-      0040 ...............X  (scaled 1/2 x 1/2 !!)
-      0080 ...............X
-      00C0 ...............X  Legenda:
-      0100 ...............X  . 6-bit sprite reference with 2-bit index into next X
-      0140 ...............X  X 4*4-bit index into P
-      0180 ...............X  P 16*4-bit indexed color palette
-      01C0 ...............X  r display (and IO?) settings registers (e.g. scroll offset, actual viewport; TBD)
-      0200 ...............X  S sprite register (sprite reference, size, x, y)
-      0240 ...............X  s (other) sprite register (sprite reference, size, x, y)
-      0280 ...............X
-      02C0 ...............X
-      0300 ...............X
-      0340 ...............X
-      0380 ...............X
-      03C0 PPPPrrrrssSSssSS
-0400  ----
-...   512b monochrome sprite data (64 sprites, maybe 4 banks of 16)
-0600  ----
-...   512b indexed sprite data (64 sprites, maybe 4 banks of 16)
-0800  ----
+### (Display) memory layout:
+
+    0000  -----
+    ...   1kb display mem (32 * 32 blocks)
+          0000 ...............X
+          0040 ...............X  (scaled 1/2 x 1/2 !!)
+          0080 ...............X
+          00C0 ...............X  Legenda:
+          0100 ...............X  . 6-bit sprite reference with 2-bit index into next X
+          0140 ...............X  X 4*4-bit index into P
+          0180 ...............X  P 16*4-bit indexed color palette
+          01C0 ...............X  r display (and IO?) settings registers (e.g. scroll offset, actual viewport; TBD)
+          0200 ...............X  S sprite register (sprite reference, size, x, y)
+          0240 ...............X  s (other) sprite register (sprite reference, size, x, y)
+          0280 ...............X
+          02C0 ...............X
+          0300 ...............X
+          0340 ...............X
+          0380 ...............X
+          03C0 PPPPrrrrssSSssSS
+    0400  ----
+    ...   512b monochrome sprite data (64 sprites, maybe 4 banks of 16)
+    0600  ----
+    ...   512b indexed sprite data (64 sprites, maybe 4 banks of 16)
+    0800  ----
 
 
 ## Using its own display as a sprite editor
