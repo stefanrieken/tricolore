@@ -84,12 +84,8 @@ display.
 
 ## The processor
 
-- To be inspired by CHIP-8, or any existing processor to re-use tooling
-  - If 6502, reserve 0000-0200 (zero-page and stack)
-  - If 6502, we get highly compatible with the L-Star Plus (but it's monochrome!)
-- Having an ESP32-based emulator / interpreter is a big plus, too.
-- Maybe address memory by 1kb banks (10 bits),
-  leaving 6 bits (32 options) for command data
+The 'video chip' can presently be demoed even without a 'processor'.
 
-The display 'chip' can be used without specifying the processor!
+Nevertheless, a fitting bytecode language is starting to take shape in the form
+of a separate 'processor' and assembler. Both still require further integration.
 
