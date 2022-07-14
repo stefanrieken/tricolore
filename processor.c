@@ -10,14 +10,19 @@ Status register:
 - Negative ("sign bit is now negative")
 - Zero ("outcome was zero")
 
-MMccSooo
+Insruction is 8 bits: MMccSooo
+Followed by register (8 bits), usually also dest;
+Then operand, which operates depending on mode (MM):
 
 MM = mode:
-
 00 = reg->reg (use free byte to indicate: byte or (variable sized) word, indirect addressing, increment / decrement, etc.)
-01 = reg->mem
+01 = reg->mem;
 10 = mem->reg
 11 = immediate->reg
+
+S = size:
+0 = 1 bit (write one register or mem location)
+1 = 2 bits (write 2 consecutive register or mem locations; NOTE or correctly perform 2 consecutive operations with the right flags!)
 
 cc = conditional:
 00 Always
@@ -62,7 +67,7 @@ Operations:
 100 AND
 101 ORR
 110 XOR
-111 ROT (further flags are in free byte)
+111 ROT (further flags are in free byte - e.g. shift, rotate carry in)
 
 
 o All operations are ALU operations; PC, SR and SP are special registers.
@@ -71,6 +76,8 @@ o The assembler accepts global variable names as register names, assigning them 
 
 o Dynamically (scoped) naming of registers, as well as keeping track of local (data stack) variables is trickier
   and should be beyond our scope (no pun intended).
+
+o Convenience operations may be supported as macro's.
 
 Example: JSR (push PC, jmp immediate) (let's say SP points to next free and goes up)
 
@@ -133,23 +140,25 @@ uint8_t * sp; // single-page call stack
 
 static inline bool ok(int condition) {
 	switch(condition) {
-		case 0b01: return (*sr & SR_NEG) == 0;
-		case 0b10: return (*sr & SR_NEG) != 0;
-		case 0b11: return (*sr & SR_ZRO) != 0;
-		default: return true;
+    case AL:
+    default:
+    return true;
+		case GT: return (*sr & SR_NEG) == 0;
+		case LT: return (*sr & SR_NEG) != 0;
+		case EQ: return (*sr & SR_ZRO) != 0;
 	}
 }
 
 static inline uint8_t fetch_src(instruction * instr, int turn) {
 	// note that 'src' actually equals 'dest' in a 2-arg instruction set
 	// so in all cases but reg->mem the src is a register.
-	return (instr->mode == 0b01) ? memory[instr->address + turn] : regs[instr->reg + turn];
+	return (instr->mode == REG_MEM) ? memory[instr->address + turn] : regs[instr->reg + turn];
 }
 
 static inline uint8_t fetch_arg(instruction * instr, int turn) {
 	// so the arg is the left hand side!
 	switch(instr->mode) {
-		case 0b00: // reg->reg; arg is in hi
+		case REG_REG: // reg->reg; arg is in hi
 			if (instr->addr.lo & 0b1) { // indirect addressing
 				uint16_t * full_address = (uint16_t *) &regs[instr->addr.hi];
 				return memory[*full_address + turn];
@@ -157,13 +166,14 @@ static inline uint8_t fetch_arg(instruction * instr, int turn) {
 				return regs[instr->addr.hi + turn];
 			}
 			break;
-		case 0b01: // reg->mem
+		case REG_MEM: // reg->mem
 			return regs[instr->reg + turn];
 			break;
-		case 0b10: // mem->reg
+		case MEM_REG: // mem->reg
 			return memory[instr->address + turn];
 			break;
-		case 0b11: // immediate->reg
+		case IMM_REG: // immediate->reg
+    default: // default only added to please compiler
 			return turn == 0 ? instr->addr.lo : instr->addr.hi;
 			break;
 	}
@@ -173,26 +183,26 @@ static inline uint8_t perform(instruction * instr, uint8_t src, uint8_t arg) {
 	uint16_t result;
 
 	switch(instr->operation) {
-		case 0b000: // MOV
-		case 0b001: // (uh, reserved?)
+		case MOV:
+		case HUH: // (uh, reserved?)
 			result = arg;
 			break;
-		case 0b010: // ADC
+		case ADC:
 			result = src + arg;
 			break;
-		case 0b011: // SBC
+		case SBC:
 			result = src - arg;
 			break;
-		case 0b100: // AND
+		case AND:
 			result = src & arg;
 			break;
-		case 0b101: // OR
+		case OR:
 			result = result | arg;
 			break;
-		case 0b110: // XOR
+		case XOR:
 			result = result ^ arg;
 			break;
-		case 0b111: // ROT
+		case ROT:
 			// TODO
 			result = 0;
 			break;
@@ -202,10 +212,10 @@ static inline uint8_t perform(instruction * instr, uint8_t src, uint8_t arg) {
 	return result & 0xFF;
 }
 
-static inline uint8_t write_back(instruction * instr, int turn, uint8_t result) {
+static inline void write_back(instruction * instr, int turn, uint8_t result) {
 	// note that 'src' actually equals 'dest' in a 2-arg instruction set
-	// so in all cases but reg->mem the src is a register.
-	if (instr->mode == 0b01) {
+	// so in all cases but reg->mem the dest is a register.
+	if (instr->mode == REG_MEM) {
 		memory[instr->address + turn] = result;
 	} else {
 		regs[instr->reg + turn] = result;
@@ -224,7 +234,7 @@ void run() {
 				uint8_t arg = fetch_arg(instr, turn);
 				uint8_t result = perform(instr, src, arg);
 				write_back(instr, turn, result);
-			} while (instr->size > 0 && ++turn < 2); // that is, do once for lo and hi data if so requested
+			} while (instr->size != turn++); // that is, repeat instruction for both lo and hi data if it is of 'word' length
 		}
 	}
 	printf("PC: %d\n", *pc);
@@ -242,7 +252,7 @@ static inline uint16_t * reg2() {
 	return result;
 }
 
-void main (int argc, char ** argv) {
+int main (int argc, char ** argv) {
 	allocation_counter = 0;
 
 	memory = (uint8_t *) malloc(sizeof(uint8_t) * 0xFFF); // 4 kb
@@ -260,11 +270,13 @@ void main (int argc, char ** argv) {
 	*sp = 0x00; // either additive stack pointing to next available, or subtractive pointing to before
 
 	instruction * at_pc = (instruction *) &memory[*pc];
-	at_pc->operation = 0b000; // move
-	at_pc->condition = 0b00; // always
+	at_pc->operation = MOV; // move
+	at_pc->condition = AL; // always
 	at_pc->size = 0b1; // 2 bytes
-	at_pc->mode = 0b11; // immmediate to register
+	at_pc->mode = IMM_REG; // immmediate to register
 	at_pc->address = 0;
 	at_pc->reg = 0x02; // PC
 	run();
+
+  return 0;
 }
